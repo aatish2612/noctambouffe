@@ -1,0 +1,190 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Noctambouffe — Où bouffer après 23h</title>
+  <meta name="description" content="Annuaire sarcastique des spots où manger après 23h à Paris et en Île-de-France, tenu par Le Veilleur de Nuit.">
+  <meta name="theme-color" content="#080a14">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ctext y='26' font-size='26'%3E%F0%9F%8C%99%3C/text%3E%3C/svg%3E">
+  <link rel="stylesheet" href="vendor/leaflet/leaflet.css">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="moon" aria-hidden="true"></div>
+
+  <header class="site-header">
+    <a class="brand" href="#/chat" aria-label="Noctambouffe, retour au Veilleur">
+      <svg class="brand-moon" viewBox="0 0 32 32" aria-hidden="true"><path d="M21 3a13 13 0 1 0 8 22 11 11 0 0 1-8-22z" fill="currentColor"/></svg>
+      <span>Noctambouffe</span>
+    </a>
+    <nav class="main-nav" aria-label="Navigation principale">
+      <a href="#/chat" data-route="chat">Le Veilleur</a>
+      <a href="#/spots" data-route="spots">Les spots</a>
+      <a href="#/ajouter" data-route="ajouter">Ajouter un spot</a>
+    </nav>
+  </header>
+
+  <main id="main">
+    <!-- ============ Vue : chat ============ -->
+    <section id="view-chat" data-view="chat" hidden>
+      <header class="view-head">
+        <h1 tabindex="-1">Le Veilleur de Nuit</h1>
+        <p>Dis-lui l'heure, ta dalle, ce que tu veux manger. Il te répondra avec toute la tendresse d'un rideau de fer.</p>
+      </header>
+
+      <div class="chat-shell">
+        <div id="chat-log" class="chat-log" role="log" aria-live="polite" aria-label="Conversation avec le Veilleur de Nuit">
+          <div id="chat-empty" class="empty-state">
+            <svg class="empty-icon" viewBox="0 0 64 64" aria-hidden="true"><circle cx="32" cy="32" r="30" fill="none" stroke="currentColor" stroke-width="2" opacity=".35"/><path d="M40 12a20 20 0 1 0 12 34 17 17 0 0 1-12-34z" fill="currentColor"/></svg>
+            <h2>Personne ne t'a encore insulté ce soir</h2>
+            <p>Écris l'heure qu'il est, la taille de ta faim et ton envie (kebab, pizza, ramen…). Ou clique sur un exemple et assume.</p>
+            <div class="chips" role="group" aria-label="Exemples de messages">
+              <button type="button" class="chip" data-msg="Il est 2h30, grosse dalle, je veux un kebab">2h30, grosse dalle, kebab</button>
+              <button type="button" class="chip" data-msg="3h du mat, petite faim">3h du mat, petite faim</button>
+              <button type="button" class="chip" data-msg="Minuit pile, un burger">Minuit pile, un burger</button>
+              <button type="button" class="chip" data-msg="Il est 1h, un kebab à Sevran">1h, un kebab à Sevran</button>
+              <button type="button" class="chip" data-msg="Il est 20h, je veux une pizza">20h, une pizza</button>
+            </div>
+          </div>
+        </div>
+
+        <form id="chat-form" class="chat-form" autocomplete="off">
+          <label for="chat-input" class="sr-only">Ton message pour le Veilleur</label>
+          <input id="chat-input" name="message" type="text" maxlength="300" required
+                 placeholder="Ex : Il est 3h, grosse dalle, un kebab à Sevran">
+          <button id="chat-send" class="btn btn-primary" type="submit">Envoyer</button>
+        </form>
+        <div class="chat-tools">
+          <p class="hint">Astuce : donne l'heure au format 24h (« 2h30 », « 23h15 », « minuit »). Sans heure, le Veilleur prend celle de Paris. Cite une commune (« un kebab à Sevran ») ou active « Autour de moi » pour trier par distance.</p>
+          <div class="chat-buttons">
+            <button id="geo-toggle" class="btn btn-ghost btn-small" type="button" aria-pressed="false">📍 Autour de moi : désactivé</button>
+            <button id="chat-clear" class="btn btn-ghost btn-small" type="button" hidden>Vider la conversation</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ Vue : liste des spots ============ -->
+    <section id="view-spots" data-view="spots" hidden>
+      <header class="view-head">
+        <h1 tabindex="-1">Les spots nocturnes</h1>
+        <p>Tous les endroits qui ont survécu au Décret de 23h : ouverts à un moment entre 23h et 6h, sinon dehors. Importés d'OpenStreetMap ou ajoutés à la main.</p>
+      </header>
+
+      <div class="toolbar" id="spots-toolbar">
+        <div class="field">
+          <label for="spot-search">Rechercher</label>
+          <input id="spot-search" type="search" maxlength="80" placeholder="Nom, adresse, badge…">
+        </div>
+        <div class="field">
+          <label for="spot-type-filter">Type</label>
+          <select id="spot-type-filter"><option value="">Tous les types</option></select>
+        </div>
+        <p id="spots-count" class="count" aria-live="polite"></p>
+      </div>
+
+      <div id="spots-state" aria-live="polite"></div>
+      <div id="spots-grid" class="cards"></div>
+      <nav id="spots-pager" class="pager" aria-label="Pagination des spots" hidden>
+        <button id="pager-prev" class="btn btn-ghost btn-small" type="button">← Précédent</button>
+        <span id="pager-info" aria-live="polite"></span>
+        <button id="pager-next" class="btn btn-ghost btn-small" type="button">Suivant →</button>
+      </nav>
+    </section>
+
+    <!-- ============ Vue : formulaire (ajout / modification) ============ -->
+    <section id="view-form" data-view="form" hidden>
+      <header class="view-head">
+        <h1 id="form-title" tabindex="-1">Ajouter un spot</h1>
+        <p id="form-subtitle">Un restaurant, ses horaires, et la façon dont le Veilleur le jugera. Il doit être ouvert à un moment entre 23h et 6h.</p>
+      </header>
+
+      <form id="spot-form" class="spot-form" novalidate>
+        <div id="form-banner" class="banner" role="alert" hidden></div>
+
+        <div class="field">
+          <label for="f-nom">Nom du spot</label>
+          <input id="f-nom" name="nom" type="text" maxlength="80" aria-describedby="err-nom" placeholder="Ex : Chez Momo la Nuit">
+          <p class="field-error" id="err-nom" hidden></p>
+        </div>
+
+        <div class="field">
+          <label for="f-type">Type</label>
+          <select id="f-type" name="type" aria-describedby="err-type"></select>
+          <p class="field-error" id="err-type" hidden></p>
+        </div>
+
+        <div class="field">
+          <label for="f-adresse">Adresse</label>
+          <input id="f-adresse" name="adresse" type="text" maxlength="160" aria-describedby="err-adresse" placeholder="Ex : 12 rue de la Soif, 75011 Paris">
+          <p class="field-error" id="err-adresse" hidden></p>
+        </div>
+
+        <div class="row">
+          <div class="field">
+            <label for="f-ouverture">Ouverture</label>
+            <input id="f-ouverture" name="ouverture" type="time" aria-describedby="err-ouverture hint-hours">
+            <p class="field-error" id="err-ouverture" hidden></p>
+          </div>
+          <div class="field">
+            <label for="f-fermeture">Fermeture</label>
+            <input id="f-fermeture" name="fermeture" type="time" aria-describedby="err-fermeture hint-hours">
+            <p class="field-error" id="err-fermeture" hidden></p>
+          </div>
+        </div>
+        <p class="hint" id="hint-hours">Passage de minuit géré : 18:00 → 02:00 veut dire fermeture le lendemain. Ouverture = fermeture (ex : 00:00 → 00:00) veut dire 24h/24.</p>
+
+        <div class="field">
+          <label for="f-badge">Badge décerné</label>
+          <input id="f-badge" name="badge" type="text" maxlength="40" aria-describedby="err-badge" placeholder="Ex : Roi de la sauce blanche">
+          <p class="field-error" id="err-badge" hidden></p>
+        </div>
+
+        <div class="field">
+          <label for="f-roast">Roast du Veilleur</label>
+          <textarea id="f-roast" name="roast" rows="3" maxlength="280" aria-describedby="err-roast" placeholder="Ex : Le gars derrière le comptoir t'a déjà jugé trois fois."></textarea>
+          <p class="field-error" id="err-roast" hidden></p>
+        </div>
+
+        <div class="form-actions">
+          <button id="form-submit" class="btn btn-primary" type="submit">Enregistrer le spot</button>
+          <a class="btn btn-ghost" href="#/spots">Annuler</a>
+        </div>
+      </form>
+    </section>
+
+    <!-- ============ Vue : page introuvable ============ -->
+    <section id="view-notfound" data-view="notfound" hidden>
+      <div class="empty-state">
+        <svg class="empty-icon" viewBox="0 0 64 64" aria-hidden="true"><circle cx="32" cy="32" r="30" fill="none" stroke="currentColor" stroke-width="2" opacity=".35"/><path d="M40 12a20 20 0 1 0 12 34 17 17 0 0 1-12-34z" fill="currentColor"/></svg>
+        <h1 tabindex="-1">Cette page n'existe pas</h1>
+        <p>Tu t'es perdu en pleine nuit, ça arrive aux meilleurs. Retourne au Veilleur.</p>
+        <a class="btn btn-primary" href="#/chat">Retour au chat</a>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <p>Noctambouffe — projet fil rouge. Les spots de démo sont fictifs. Le Veilleur est un personnage : ses insultes visent ton planning, pas toi.</p>
+    <p>Fond de carte et données des lieux importés : © contributeurs <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap</a> (licence ODbL). Les horaires sont ceux saisis par les contributeurs : vérifie avant de te déplacer.</p>
+  </footer>
+
+  <!-- Confirmation de suppression -->
+  <dialog id="confirm-dialog" aria-labelledby="confirm-title">
+    <form method="dialog" class="dialog-body">
+      <h2 id="confirm-title">Supprimer ce spot ?</h2>
+      <p>« <strong id="confirm-name"></strong> » sera définitivement viré de l'annuaire. Le Veilleur n'en pleurera pas.</p>
+      <div class="dialog-actions">
+        <button class="btn btn-ghost" value="cancel">Annuler</button>
+        <button class="btn btn-danger" value="confirm">Supprimer</button>
+      </div>
+    </form>
+  </dialog>
+
+  <div id="toasts" class="toasts" aria-live="polite"></div>
+
+  <script src="vendor/leaflet/leaflet.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
