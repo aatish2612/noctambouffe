@@ -1,0 +1,23 @@
+{
+  "name": "noctambouffe",
+  "version": "1.0.0",
+  "description": "Annuaire sarcastique pour manger après 23h à Paris et en Île-de-France, tenu par Le Veilleur de Nuit.",
+  "main": "server.js",
+  "private": true,
+  "license": "MIT",
+  "scripts": {
+    "start": "node server.js",
+    "import": "node import-osm.js",
+    "import:idf": "node import-osm.js idf",
+    "test": "node --test"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "dependencies": {
+    "better-sqlite3": "^13.0.3",
+    "dotenv": "^18.0.6",
+    "express": "^5.2.1",
+    "leaflet": "^1.9.4"
+  }
+}
