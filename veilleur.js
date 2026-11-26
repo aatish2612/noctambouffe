@@ -99,6 +99,15 @@ function parseTime(message) {
   return h * 60 + min;
 }
 
+/** Heure écrite mais impossible (« 26h12 », « 3h70 ») : renvoie ce que l'utilisateur a tapé, sinon null. */
+function invalidTimeMention(message) {
+  const m = /\b(\d{1,2})\s*(?:h|:|heures?)\s*(\d{2})?(?!\d)/.exec(normalize(message));
+  if (!m) return null;
+  const h = Number(m[1]);
+  const min = m[2] ? Number(m[2]) : 0;
+  return h > 24 || min > 59 ? m[0].trim() : null;
+}
+
 /* ------------------------------------------------------------------ */
 /* Analyse du message                                                  */
 /* ------------------------------------------------------------------ */
@@ -286,6 +295,11 @@ const LIEU_UNKNOWN = [
   '« {lieu} » ? Introuvable. Même mes cartes ont des limites, mais pas autant que ton orthographe.',
 ];
 
+const INVALID_TIME = [
+  '« {saisie} » ? Cette heure n\'existe pas, génie. J\'ai pris l\'heure qu\'il est ({h}) : reviens à la réalité.',
+  '« {saisie} », sérieusement ? Même ton réveil refuserait. Je me rabats sur l\'horloge ({h}).',
+];
+
 const CLOSINGS = {
   valide: ['Voilà ton adresse, ne me remercie pas :', 'Fonce, et que ça te serve de leçon :', 'Voilà. Va t\'y goinfrer :'],
   valide_many: ['Voilà tes adresses, choisis vite, je n\'ai pas toute la nuit :', 'Trois options, parce que tu es incapable de te décider seul :', 'Sers-toi, et ne me remercie pas :'],
@@ -365,16 +379,18 @@ function decide(message, spots, { now = new Date(), rng = Math.random, position 
   const badge = BADGES[band][hunger];
   const roastTime = fill(pick(TIME_ROASTS[band], rng), vars);
   const roastHunger = pick(HUNGER_ROASTS[hunger], rng);
-  const vague = parsed === null && cuisines.length === 0 && tokens.length === 0 && hunger === 'normale';
+  const badTime = parsed === null ? invalidTimeMention(message) : null;
+  const timeWarning = badTime ? fill(pick(INVALID_TIME, rng), { saisie: badTime, h: heure }) : '';
+  const vague = parsed === null && !badTime && cuisines.length === 0 && tokens.length === 0 && hunger === 'normale';
   const vagueLine = vague ? pick(VAGUE_LINES, rng) : '';
-  const contexte = { heure, source: parsed === null ? 'horloge' : 'message', faim: hunger, position: Boolean(position), lieu: lieu ? lieu.nom : null,
+  const contexte = { heure, source: parsed === null ? 'horloge' : 'message', faim: hunger, heure_invalide: badTime, position: Boolean(position), lieu: lieu ? lieu.nom : null,
     // Centre de la recherche (GPS ou commune citée) : sert à placer « toi » sur la carte.
     centre: position ? { lat: position.lat, lon: position.lon } : null };
   const lieuLine = lieu ? [fill(pick(lieu.trouve ? LIEU_FOUND : LIEU_UNKNOWN, rng), { lieu: lieu.nom })] : [];
 
   /** Assemble la réponse : texte commun + proposition(s). */
   const finish = (statut, nom, adresse, shared, closingKey, list, firstRoast) => {
-    const sharedText = [vagueLine, roastTime, roastHunger, ...shared].filter(Boolean).join(' ');
+    const sharedText = [vagueLine, timeWarning, roastTime, roastHunger, ...shared].filter(Boolean).join(' ');
     const recommandation = {
       nom,
       adresse,
@@ -474,5 +490,5 @@ function decide(message, spots, { now = new Date(), rng = Math.random, position 
 
 module.exports = {
   TYPES, toMinutes, isOpenAt, coversNight, isNight, parisMinutes, fmtTime, parseTime, normalize,
-  detectHunger, detectCuisines, extractPlace, extractPlaceLoose, validationRoast, distanceKm, decide,
+  detectHunger, detectCuisines, invalidTimeMention, extractPlace, extractPlaceLoose, validationRoast, distanceKm, decide,
 };
