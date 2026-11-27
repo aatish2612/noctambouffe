@@ -107,7 +107,7 @@ Format de réponse du Veilleur quand il recommande (champ `recommandation` de `P
 | `POST`   | `/api/chat`         | Parler au Veilleur (`{"message": "...", "position": {"lat": 48.85, "lon": 2.35}}`, position facultative) | 200, 422 |
 | `GET`    | `/api/meta`         | Types de spots autorisés                          | 200                        |
 
-Les erreurs ont toutes la forme `{ "erreur": "…", "champs": { "champ": "message" } }`.
+Toutes les routes `/api` peuvent répondre **429** (trop de requêtes). Les erreurs ont toutes la forme `{ "erreur": "…", "champs": { "champ": "message" } }`.
 
 ## La carte
 
@@ -122,12 +122,13 @@ Quand le Veilleur propose des adresses, une carte s'affiche sous sa réponse : u
 
 - Validation **côté serveur** de tous les champs (types, longueurs, format `HH:MM`, type dans une liste fermée, règle des horaires).
 - Requêtes SQL **paramétrées** partout ; la recherche échappe `%` et `_`.
+- Limitation de débit en mémoire : 240 requêtes par minute et par adresse IP sur l'API, 30 sur le chat. Au-delà : code 429, message du Veilleur et en-tête `Retry-After`. Les compteurs sont perdus au redémarrage.
 - Contenus affichés via `textContent` uniquement : rien n'est interprété comme du HTML (pas de XSS).
 - Politique CSP stricte (aucun script ni style inline, scripts uniquement depuis le serveur), `nosniff`, corps de requête limité à 10 Ko. Seule ouverture vers l'extérieur : les images du fond de carte (`tile.openstreetmap.org`).
 - Les bulles de la carte sont construites avec des éléments DOM et `textContent` : un nom de restaurant contenant du HTML s'affiche comme du texte.
 - Aucun secret dans le dépôt.
 
-**Risques résiduels connus** : pas d'authentification (tout visiteur peut ajouter, modifier ou supprimer), pas de limitation de débit. C'est conforme au cahier des charges, mais ne pas exposer l'application telle quelle sur Internet.
+**Risques résiduels connus** : pas d'authentification (tout visiteur peut ajouter, modifier ou supprimer), limitation de débit simple (en mémoire, par adresse IP). C'est conforme au cahier des charges, mais ne pas exposer l'application telle quelle sur Internet.
 
 ## Tests
 
