@@ -6,6 +6,7 @@ const express = require('express');
 const db = require('./database');
 const veilleur = require('./veilleur');
 const geocode = require('./geocode');
+const { createLimiter } = require('./ratelimit');
 
 const PORT = Number(process.env.PORT) || 3000;
 const HOST = process.env.HOST || '127.0.0.1';
@@ -29,6 +30,10 @@ app.use(express.json({ limit: '10kb' }));
 app.use(express.static(path.join(__dirname, 'public')));
 // Leaflet (bibliothèque de carte) est servi depuis node_modules : aucun script externe, la politique CSP reste « 'self' ».
 app.use('/vendor/leaflet', express.static(path.join(__dirname, 'node_modules', 'leaflet', 'dist'), { index: false }));
+
+// Limitation de débit par adresse IP : 240 requêtes par minute sur l'API ; le chat est plus strict (30 par minute)
+// car il peut déclencher des appels au service de géocodage, qui impose lui-même une requête par seconde.
+app.use('/api', createLimiter({ windowMs: 60000, max: 240 }));
 
 /* ------------------------------------------------------------------ */
 /* Validation (côté serveur : c'est elle qui fait foi)                  */
@@ -189,7 +194,7 @@ function parsePosition(raw) {
 
 // Conversation avec le Veilleur de Nuit : { message, position? } -> jusqu'à 3 propositions.
 // Un lieu cité dans le message ("un kebab à Sevran") est géolocalisé et prime sur la position GPS.
-app.post('/api/chat', async (req, res) => {
+app.post('/api/chat', createLimiter({ windowMs: 60000, max: 30 }), async (req, res) => {
   const message = clean(req.body && req.body.message);
   if (!message) return res.status(422).json({ erreur: 'Écris quelque chose. Le silence, c\'est pas un menu.' });
   if (message.length > 300) return res.status(422).json({ erreur: 'Message trop long (300 caractères max). Je suis blasé, pas patient.' });
